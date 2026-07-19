@@ -1,12 +1,16 @@
 /**
- * NATS bridge for cross-region message delivery.
+ * NATS bridge for cross-cluster and cross-region message delivery.
  * 
- * Each node subscribes to subject "{region}.{nodeId}" (its own inbox).
- * To send cross-region, we publish to "{targetRegion}.{targetNodeId}".
+ * Each node subscribes to subject "{region}.{clusterId}.{nodeId}" (its own inbox).
+ * To send cross-cluster or cross-region, we publish to the target's subject.
  * 
- * This enables direct node-to-node delivery across regions with zero
- * unnecessary hops — the message goes straight from the sender's node
- * to the recipient's node via NATS.
+ * Routing boundaries:
+ *   - Same cluster → gRPC (handled by grpcPool, not here)
+ *   - Different cluster (same region) → NATS
+ *   - Different region → NATS
+ * 
+ * This enables direct node-to-node delivery across clusters and regions
+ * with zero unnecessary hops.
  * 
  * Using basic NATS pub/sub for now. JetStream (project.md §4.2) adds
  * persistence and guaranteed delivery — that's a later phase.

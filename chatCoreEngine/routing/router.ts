@@ -1,12 +1,18 @@
 /**
- * Three-tier message router.
+ * Four-tier message router.
  * 
  * Decides how to deliver a message based on recipient's location:
  * 
  *   1. LOCAL    — recipient is on this same node → deliver via WebSocket directly
- *   2. GRPC     — recipient is in the same region but different node → forward via gRPC bidi stream
- *   3. NATS     — recipient is in a different region → publish via NATS to {targetRegion}.{targetNodeId}
+ *   2. GRPC     — recipient is in the same region AND same cluster → forward via gRPC bidi stream
+ *   3. NATS     — recipient is in a different cluster or different region → publish via NATS
  *   4. OFFLINE  — recipient has no presence in Redis → drop (offline queue is a later phase)
+ * 
+ * ServerId format: {region}.{clusterId}.{nodeId}  (e.g., "r1.c1.node-0")
+ * NATS subject:    {region}.{clusterId}.{nodeId}  (each node subscribes to its own)
+ * 
+ * gRPC stays within a single K8s cluster (headless service DNS works).
+ * NATS handles cross-cluster and cross-region — both are "remote" hops.
  * 
  * The routing is zero-hop: messages go directly to the exact node holding the
  * recipient's connection, with no intermediate routers or brokers in between.
@@ -31,7 +37,7 @@ export class MessageRouter {
     private grpcPool: GrpcPool,
     private natsBridge: NatsBridge
   ) {
-    this.serverId = `${config.region}.${config.nodeId}`;
+    this.serverId = `${config.region}.${config.clusterId}.${config.nodeId}`;
   }
 
   /**
@@ -56,7 +62,7 @@ export class MessageRouter {
       // Fall through if delivery failed (user just disconnected)
     }
 
-    // ── Tier 2+3: Redis presence lookup ─────────────────────────
+    // ── Tier 2+3+4: Redis presence lookup ───────────────────────
     const presenceData = await this.presence.getPresence(msg.toUserId);
 
     if (!presenceData) {
@@ -66,8 +72,11 @@ export class MessageRouter {
       return "offline";
     }
 
-    // ── Tier 2: Intra-region gRPC ───────────────────────────────
-    if (presenceData.region === this.config.region) {
+    // ── Tier 2: Intra-cluster gRPC (same region + same cluster) ─
+    if (
+      presenceData.region === this.config.region &&
+      presenceData.clusterId === this.config.clusterId
+    ) {
       if (presenceData.serverId === this.serverId) {
         // Presence says user is on this server but not in local connMap
         // This means presence is stale — treat as offline
@@ -80,7 +89,7 @@ export class MessageRouter {
       try {
         await this.grpcPool.forward(presenceData.serverId, msg);
         console.log(
-          `[router] ${msg.messageId} → GRPC to ${presenceData.serverId}`
+          `[router] ${msg.messageId} → GRPC to ${presenceData.serverId} (intra-cluster)`
         );
         return "grpc";
       } catch (err: any) {
@@ -91,13 +100,19 @@ export class MessageRouter {
       }
     }
 
-    // ── Tier 3: Cross-region NATS ───────────────────────────────
+    // ── Tier 3: NATS (cross-cluster or cross-region) ────────────
     try {
       // Publish directly to the target node's NATS subject
-      // Subject = serverId = "{region}.{nodeId}" (e.g., "r2.node-3")
+      // Subject = serverId = "{region}.{clusterId}.{nodeId}"
       await this.natsBridge.publish(presenceData.serverId, msg);
+
+      const crossType =
+        presenceData.region !== this.config.region
+          ? `cross-region: ${this.config.region} → ${presenceData.region}`
+          : `cross-cluster: ${this.config.clusterId} → ${presenceData.clusterId}`;
+
       console.log(
-        `[router] ${msg.messageId} → NATS to ${presenceData.serverId} (cross-region: ${this.config.region} → ${presenceData.region})`
+        `[router] ${msg.messageId} → NATS to ${presenceData.serverId} (${crossType})`
       );
       return "nats";
     } catch (err: any) {

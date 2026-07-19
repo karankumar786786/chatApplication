@@ -36,7 +36,7 @@ import type { WsData, IncomingWsMessage } from "./types";
 
 const startTime = Date.now();
 const config = loadConfig();
-const serverId = `${config.region}.${config.nodeId}`;
+const serverId = `${config.region}.${config.clusterId}.${config.nodeId}`;
 
 console.log(`[boot] starting chat core engine — ${serverId}`);
 console.log(`[boot] config:`, {
@@ -73,7 +73,7 @@ const router = new MessageRouter(
 await natsBridge.connect();
 natsBridge.subscribe(serverId, connManager);
 
-// ─── gRPC Server (intra-region) ───────────────────────────────────
+// ─── gRPC Server (intra-cluster) ──────────────────────────────────
 
 const grpcServer = startGrpcServer(
   config.grpcPort,
@@ -174,7 +174,7 @@ const server = Bun.serve<WsData>({
 
       // Set presence in Redis (fire-and-forget, don't block the open handler)
       presence
-        .setOnline(userId, serverId, config.region, connId)
+        .setOnline(userId, serverId, config.region, config.clusterId, connId)
         .catch((err) =>
           console.error(`[ws] failed to set presence for ${userId}:`, err.message)
         );

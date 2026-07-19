@@ -14,6 +14,7 @@ import Redis from "ioredis";
 export interface PresenceData {
   serverId: string;
   region: string;
+  clusterId: string;
   socketId: string;
 }
 
@@ -57,10 +58,11 @@ export class PresenceManager {
     userId: string,
     serverId: string,
     region: string,
+    clusterId: string,
     socketId: string
   ): Promise<void> {
     const key = `online:${userId}`;
-    await this.redis.hset(key, { serverId, region, socketId });
+    await this.redis.hset(key, { serverId, region, clusterId, socketId });
     await this.redis.expire(key, this.ttl);
   }
 
@@ -68,10 +70,11 @@ export class PresenceManager {
   async getPresence(userId: string): Promise<PresenceData | null> {
     const key = `online:${userId}`;
     const data = await this.redis.hgetall(key);
-    if (!data.serverId || !data.region || !data.socketId) return null;
+    if (!data.serverId || !data.region || !data.clusterId || !data.socketId) return null;
     return {
       serverId: data.serverId,
       region: data.region,
+      clusterId: data.clusterId,
       socketId: data.socketId,
     };
   }
