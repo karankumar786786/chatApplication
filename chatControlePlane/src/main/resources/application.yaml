@@ -1,0 +1,41 @@
+spring:
+  application:
+    name: chatControlePlane
+  cache:
+    type: redis
+  cassandra:
+    contact-points: ${SCYLLA_DB_CONTACT_POINTS:localhost}
+    port: ${SCYLLA_DB_PORT:9042}
+    local-datacenter: ${SCYLLA_DB_LOCAL_DATACENTER:datacenter1}
+    keyspace-name: ${SCYLLA_DB_KEYSPACE_NAME:chat}
+    schema-action: create-if-not-exists
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME:bs7819679@gmail.com}
+    password: ${MAIL_PASSWORD:ohye walq uxjr ptye}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+grpc:
+  server:
+    port: ${GRPC_PORT:9090}
+jwt:
+  secret: ${JWT_SECRET:supersecretkeythatisatleast32byteslong}
+  issuer: chatControlePlane
+  accessTokenExpiration: 900000 # 15 mins in ms
+  refreshTokenExpiration: 604800000 # 7 days in ms
+  tempTokenExpiration: 300000 # 5 mins in ms
+hmac:
+  secret: ${HMAC_SECRET:anothersupersecretkeyformacgeneration}
+
+logging:
+  level:
+    org.springframework.security: DEBUG

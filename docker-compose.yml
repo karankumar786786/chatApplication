@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  cassandra:
+    image: cassandra:latest
+    container_name: chat-cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      - CASSANDRA_START_RPC=true
+    volumes:
+      - cassandra-data:/var/lib/cassandra
+
+  redis:
+    image: redis/redis-stack
+    container_name: chat-redis
+    ports:
+      - "6379:6379"
+      - "8001:8001"
+    volumes:
+      - redis-data-o:/data
+  
+  nats:
+    image: nats:latest
+    container_name: nats-server
+    ports:
+      - '4222:4222'
+      - '8222:8222'
+
+volumes:
+  cassandra-data:
+  redis-data-o:

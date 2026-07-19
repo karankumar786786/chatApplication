@@ -1,0 +1,18 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "me.one_org.chatControlePlane.grpc";
+option java_outer_classname = "AuthenticationProto";
+
+service AuthenticationService{
+  rpc authenticate(Request) returns (Response);
+}
+
+message Request{
+  string accessToken = 1;
+  string deviceId = 2;
+}
+
+message Response{
+  string subject = 1;
+}

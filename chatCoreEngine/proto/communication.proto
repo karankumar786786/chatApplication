@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+service InternalCommunicationService {
+    rpc ForwardMessages (stream ForwardedMessage) returns (stream DeliveryAck);
+    rpc HealthCheck (HealthRequest) returns (HealthResponse);
+}
+
+message ForwardedMessage {
+    string message_id = 1;
+    string to_user_id = 2;
+    string from_user_id = 3;
+    string message_content = 4;
+    int64 timestamp = 5;
+}
+
+message DeliveryAck {
+    string message_id = 1;
+    enum Status {
+        DELIVERED = 0;
+        USER_NOT_FOUND = 1;
+        FAILED = 2;
+    }
+    Status status = 2;
+}
+
+message HealthRequest {}
+
+message HealthResponse {
+    string server_id = 1;
+    int32 active_connections = 2;
+    int64 uptime_seconds = 3;
+}
