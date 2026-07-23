@@ -119,11 +119,7 @@
 			<version>4.0.0</version>
 			<scope>compile</scope>
 		</dependency>
-		<dependency>
-			<groupId>io.netty</groupId>
-			<artifactId>netty-resolver-dns-native-macos</artifactId>
-			<classifier>osx-aarch_64</classifier>
-		</dependency>
+		<!-- macOS-only dep moved to profile below; do NOT include here (breaks Linux/Docker builds) -->
 		<dependency>
 			<groupId>commons-codec</groupId>
 			<artifactId>commons-codec</artifactId>
@@ -188,5 +184,24 @@
 			</plugin>
 		</plugins>
 	</build>
+
+	<!-- macOS-only native Netty resolver: only activated on Apple Silicon dev machines -->
+	<profiles>
+		<profile>
+			<id>macos-native-netty</id>
+			<activation>
+				<os>
+					<name>Mac OS X</name>
+				</os>
+			</activation>
+			<dependencies>
+				<dependency>
+					<groupId>io.netty</groupId>
+					<artifactId>netty-resolver-dns-native-macos</artifactId>
+					<classifier>osx-aarch_64</classifier>
+				</dependency>
+			</dependencies>
+		</profile>
+	</profiles>
 
 </project>

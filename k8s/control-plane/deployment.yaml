@@ -15,6 +15,13 @@ spec:
       labels:
         app: control-plane
     spec:
+      # Inject host.minikube.internal into the pod's /etc/hosts so DNS resolves
+      # to the Docker host machine (where Cassandra, Redis run via docker-compose).
+      # CoreDNS does NOT resolve this hostname — only the minikube node's /etc/hosts does.
+      hostAliases:
+        - ip: "192.168.65.254"
+          hostnames:
+            - "host.minikube.internal"
       containers:
         - name: control-plane
           image: control-plane-image
@@ -44,10 +51,12 @@ spec:
           readinessProbe:
             tcpSocket:
               port: 9090
-            initialDelaySeconds: 30
+            initialDelaySeconds: 60
             periodSeconds: 10
+            failureThreshold: 6
           livenessProbe:
             tcpSocket:
               port: 9090
-            initialDelaySeconds: 40
+            initialDelaySeconds: 90
             periodSeconds: 15
+            failureThreshold: 4

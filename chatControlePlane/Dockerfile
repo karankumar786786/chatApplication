@@ -2,9 +2,10 @@
 FROM maven:3-eclipse-temurin-26 AS build
 WORKDIR /app
 
-# Cache dependencies
+# Cache dependency downloads — copy pom.xml first so Docker caches this
+# layer and only re-downloads when pom.xml changes (not on every src change)
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:resolve dependency:resolve-plugins -B
 
 # Build the application
 COPY src ./src
