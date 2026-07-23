@@ -1,0 +1,5 @@
+node_modules
+.git
+.cursor
+*.md
+.DS_Store

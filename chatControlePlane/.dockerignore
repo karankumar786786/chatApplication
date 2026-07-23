@@ -1,0 +1,8 @@
+target
+.git
+.idea
+.vscode
+.cursor
+*.md
+*.class
+.DS_Store

@@ -1,0 +1,34 @@
+# Headless service for intra-cluster gRPC communication.
+# clusterIP: None means DNS returns individual pod IPs, enabling
+# direct pod-to-pod addressing: chat-core-0.chat-core-grpc.default.svc.cluster.local
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-core-grpc
+  namespace: default
+  labels:
+    app: chat-core
+spec:
+  clusterIP: None  # Headless — returns all pod IPs for gRPC discovery
+  selector:
+    app: chat-core
+  ports:
+    - name: grpc
+      port: 4000
+      targetPort: 4000
+---
+# Regular service for WebSocket access (port-forwarded by Tilt)
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat-core-ws
+  namespace: default
+  labels:
+    app: chat-core
+spec:
+  selector:
+    app: chat-core
+  ports:
+    - name: ws
+      port: 3000
+      targetPort: 3000

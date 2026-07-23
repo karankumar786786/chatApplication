@@ -1,0 +1,83 @@
+# StatefulSet gives each pod a stable identity: chat-core-0, chat-core-1, etc.
+# This is critical for gRPC addressing and NATS subscription subjects.
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: chat-core
+  namespace: default
+  labels:
+    app: chat-core
+spec:
+  serviceName: chat-core-grpc  # Headless service for stable DNS
+  replicas: 2                  # 2 replicas to test intra-cluster gRPC routing
+  selector:
+    matchLabels:
+      app: chat-core
+  template:
+    metadata:
+      labels:
+        app: chat-core
+    spec:
+      containers:
+        - name: chat-core
+          image: chat-core-image
+          ports:
+            - name: ws
+              containerPort: 3000
+            - name: grpc
+              containerPort: 4000
+          env:
+            - name: REGION
+              value: "r1"
+            - name: CLUSTER_ID
+              value: "c1"
+            # NODE_ID = pod name (e.g., "chat-core-0", "chat-core-1")
+            - name: NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            # Also set POD_NAME for backward compat with original config
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: WS_PORT
+              value: "3000"
+            - name: GRPC_PORT
+              value: "4000"
+            # gRPC host = pod FQDN via headless service
+            # Other pods discover this via the server registry in Redis
+            - name: GRPC_HOST
+              value: "$(POD_NAME).chat-core-grpc.default.svc.cluster.local"
+            - name: REDIS_HOST
+              value: "host.minikube.internal"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: NATS_URL
+              value: "nats://host.minikube.internal:4222"
+            - name: CONTROL_PLANE_GRPC
+              value: "control-plane:9090"
+            - name: PRESENCE_TTL
+              value: "300"
+          resources:
+            requests:
+              cpu: 250m
+              memory: 256Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3
+      terminationGracePeriodSeconds: 30
